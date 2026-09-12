@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Resume Screening &amp; Candidate Ranking &middot; Recruiter Dashboard</title>
+<style>
+    :root {
+        --navy-900: #0f172a;
+        --navy-800: #1e293b;
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --primary-soft: #eff6ff;
+        --accent: #7c3aed;
+        --bg: #f1f5f9;
+        --card: #ffffff;
+        --text: #1e293b;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --border-soft: #eef2f7;
+        --green: #16a34a;
+        --green-bg: #dcfce7;
+        --red: #dc2626;
+        --red-bg: #fee2e2;
+        --amber: #d97706;
+        --amber-bg: #fef3c7;
+        --radius: 14px;
+        --radius-sm: 9px;
+        --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 16px rgba(15, 23, 42, 0.05);
+        --shadow-lg: 0 8px 40px rgba(15, 23, 42, 0.18);
+        --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.55;
+        font-size: 14px;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+        background: linear-gradient(125deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+        color: #fff;
+        padding: 20px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25);
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-mark {
+        width: 42px; height: 42px; border-radius: 12px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 17px; color: #fff; flex: 0 0 auto;
+    }
+    .brand h1 { font-size: 19px; font-weight: 700; letter-spacing: 0.2px; }
+    .brand .subtitle { font-size: 12.5px; opacity: 0.85; margin-top: 1px; }
+    .header-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+    .stat-chip {
+        display: flex; align-items: center; gap: 8px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        padding: 7px 14px; border-radius: 999px; font-size: 13px;
+    }
+    .stat-chip strong { font-weight: 700; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot.online { background: #4ade80; box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25); }
+    .dot.offline { background: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.25); }
+
+    /* ---------- Layout ---------- */
+    main { max-width: 1320px; margin: 24px auto; padding: 0 24px 40px; display: grid; gap: 22px; }
+    section.panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        box-shadow: var(--shadow);
+    }
+    .panel-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .step-badge {
+        width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: #fff; font-weight: 700; font-size: 14px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .panel-head h2 { font-size: 16px; font-weight: 650; color: var(--navy-900); }
+    .panel-head .hint { font-size: 12.5px; color: var(--muted); margin-left: 2px; }
+    .panel-head .tag {
+        margin-left: auto; font-size: 11.5px; font-weight: 600;
+        color: var(--primary); background: var(--primary-soft);
+        padding: 4px 10px; border-radius: 999px;
+    }
+
+    .grid-2s { display: grid; grid-template-columns: 1.35fr 1fr; gap: 22px; align-items: start; }
+    .grid-2eq { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    @media (max-width: 1020px) { .grid-2s, .grid-2eq { grid-template-columns: 1fr; } }
+
+    /* ---------- Forms ---------- */
+    label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 12px 0 6px; }
+    input[type="text"], input[type="number"], input[type="search"], textarea, select {
+        width: 100%; padding: 10px 12px;
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
+        font-size: 14px; font-family: inherit; color: var(--text);
+        background: #fff; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, textarea:focus, select:focus {
+        outline: none; border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    textarea { min-height: 150px; resize: vertical; }
+    .file-field {
+        border: 1.5px dashed var(--border); border-radius: var(--radius-sm);
+        padding: 14px; background: #f8fafc; margin-bottom: 12px;
+    }
+    .file-field input[type="file"] { border: none; padding: 0; background: transparent; margin: 0; }
+    .file-field .file-meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    button {
+        background: var(--primary); color: #fff; border: none;
+        padding: 11px 20px; border-radius: var(--radius-sm);
+        font-size: 14px; font-weight: 600; cursor: pointer;
+        transition: background 0.15s, transform 0.05s;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    button:hover { background: var(--primary-dark); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.primary-lg { width: 100%; padding: 13px; font-size: 15px; }
+    button.secondary {
+        background: #fff; color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+    button.secondary:hover { background: var(--primary-soft); }
+    button.ghost {
+        background: transparent; color: var(--muted);
+        border: 1px solid var(--border); font-weight: 500;
+    }
+    button.ghost:hover { background: #f8fafc; color: var(--text); }
+    button.danger { background: var(--red); color: #fff; }
+    button.danger:hover { background: #b91c1c; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+
+    /* ---------- Messages ---------- */
+    .alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-top: 12px; display: flex; gap: 8px; align-items: flex-start; }
+    .alert.error { background: var(--red-bg); color: var(--red); }
+    .alert.success { background: var(--green-bg); color: var(--green); }
+    .alert.info { background: var(--primary-soft); color: var(--primary-dark); }
+    .hidden { display: none !important; }
+    .muted { color: var(--muted); font-size: 12.5px; }
+    .empty-state { text-align: center; padding: 34px 16px; color: var(--muted); font-size: 13.5px; }
+    .empty-state .empty-icon {
+        width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 14px;
+        background: var(--bg); display: flex; align-items: center; justify-content: center;
+        font-size: 22px; color: var(--muted);
+    }
+
+    /* ---------- Toast ---------- */
+    #toasts { position: fixed; top: 18px; right: 18px; z-index: 200; display: grid; gap: 10px; max-width: 360px; }
+    .toast {
+        background: var(--navy-900); color: #fff; border-radius: 12px;
+        padding: 12px 16px; font-size: 13.5px; box-shadow: var(--shadow-lg);
+        display: flex; gap: 10px; align-items: center;
+        animation: toast-in 0.25s ease; border-left: 4px solid var(--primary);
+    }
+    .toast.success { border-left-color: var(--green); }
+    .toast.error { border-left-color: var(--red); }
+    .toast.leaving { animation: toast-out 0.25s ease forwards; }
+    @keyframes toast-in { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toast-out { to { opacity: 0; transform: translateX(30px); } }
+
+    /* ---------- Jobs list ---------- */
+    .jobs-list { display: grid; gap: 8px; max-height: 300px; overflow-y: auto; padding-right: 4px; }
+    .job-item {
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+        transition: border-color 0.15s, background 0.15s; cursor: pointer;
+    }
+    .job-item:hover { border-color: var(--primary); background: var(--primary-soft); }
+    .job-item.selected { border-color: var(--primary); background: var(--primary-soft); }
+    .job-item .j-title { font-weight: 600; font-size: 13.5px; line-height: 1.3; }
+    .job-item .j-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .job-item .j-id { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--primary); background: #fff; border: 1px solid var(--primary); padding: 2px 8px; border-radius: 999px; flex: 0 0 auto; }
+
+    /* ---------- Candidate table ---------- */
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 14px; }
+    .toolbar .tb-field { flex: 1; min-width: 150px; }
+    .toolbar .tb-field label { margin: 0 0 5px; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    table.cand-table { width: 100%; border-collapse: collapse; min-width: 680px; }
+    table.cand-table th, table.cand-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+    table.cand-table th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); background: #f8fafc; font-weight: 700; }
+    table.cand-table tr:last-child td { border-bottom: none; }
+    table.cand-table tbody tr { cursor: pointer; transition: background 0.12s; }
+    table.cand-table tbody tr:hover { background: var(--primary-soft); }
+    .cand-name { font-weight: 650; font-size: 13.5px; }
+    .cand-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .skeleton { height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--border-soft) 25%, #f1f5f9 50%, var(--border-soft) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .pager .muted { flex: 1; }
+
+    /* ---------- Candidate DB: compact + collapsible ---------- */
+    .db-head { flex-wrap: wrap; }
+    .collapse-btn { margin-left: auto; padding: 7px 14px; font-size: 12.5px; flex: 0 0 auto; }
+    .db-summary {
+        background: var(--bg); border: 1px dashed var(--border);
+        border-radius: var(--radius-sm); padding: 9px 14px;
+        font-size: 13px; color: var(--muted); margin-bottom: 2px;
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    #db-body:not(.hidden) { animation: panel-in 0.22s ease; }
+    @keyframes panel-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .db-tools { display: grid; grid-template-columns: minmax(250px, 380px) 1fr; gap: 14px; align-items: start; margin-bottom: 14px; }
+    @media (max-width: 880px) { .db-tools { grid-template-columns: 1fr; } }
+    .db-upload, .db-search { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px; background: #f8fafc; }
+    .db-upload label, .db-search label { margin-top: 0; }
+    .db-upload-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .db-upload-row input[type="file"] { flex: 1; min-width: 170px; font-size: 12px; padding: 7px 8px; }
+    .db-upload-row button { padding: 9px 14px; flex: 0 0 auto; }
+    .db-tools .toolbar { margin-bottom: 0; }
+    .db-tools .tb-field { flex: 1; min-width: 140px; }
+
+    /* ---------- Chips ---------- */
+    .chip { display: inline-block; padding: 2.5px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; margin: 2px 3px 0 0; }
+    .chip.match { background: var(--green-bg); color: var(--green); }
+    .chip.miss { background: var(--red-bg); color: var(--red); }
+    .chip.tag { background: var(--primary-soft); color: var(--primary-dark); }
+    .chip.sen { background: #ede9fe; color: #6d28d9; }
+    .chip.exp { background: #ffedd5; color: #c2410c; }
+    .seni-badge {
+        display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    }
+    .seni-senior { background: #fef3c7; color: #b45309; }
+    .seni-mid { background: #dbeafe; color: #1d4ed8; }
+    .seni-junior { background: #dcfce7; color: #15803d; }
+    .seni-lead, .seni-manager { background: #ede9fe; color: #6d28d9; }
+
+    /* ---------- Ranking ---------- */
+    .rank-controls { display: grid; grid-template-columns: 1fr 220px auto; gap: 14px; align-items: end; }
+    @media (max-width: 900px) { .rank-controls { grid-template-columns: 1fr; } }
+    .rank-controls label { margin: 0 0 6px; }
+    #custom-n-wrap.hidden { display: none; }
+    .weights-line { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-soft); font-size: 12px; color: var(--muted); }
+    .weights-line b { color: var(--text); }
+
+    /* ---------- Results ---------- */
+    .result-summary {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        background: var(--primary-soft); border: 1px solid #dbeafe;
+        border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 18px;
+        font-size: 13.5px;
+    }
+    .result-summary .pill { background: #fff; border: 1px solid #dbeafe; border-radius: 999px; padding: 3px 11px; font-weight: 600; color: var(--primary-dark); }
+    .rank-card {
+        border: 1px solid var(--border); border-radius: var(--radius);
+        background: #fff; margin-bottom: 18px; overflow: hidden;
+        box-shadow: var(--shadow); transition: box-shadow 0.15s;
+    }
+    .rank-card:hover { box-shadow: 0 2px 4px rgba(15, 23, 42, 0.06), 0 10px 30px rgba(15, 23, 42, 0.09); }
+    .rank-card-head {
+        display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+        border-bottom: 1px solid var(--border-soft); flex-wrap: wrap;
+    }
+    .rank-medal {
+        width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 19px; color: #fff;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+    .rank-medal.r1 { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 2px 8px rgba(217, 119, 6, 0.35); }
+    .rank-medal.r2 { background: linear-gradient(135deg, #94a3b8, #64748b); box-shadow: 0 2px 8px rgba(100, 116, 139, 0.3); }
+    .rank-medal.r3 { background: linear-gradient(135deg, #b45309, #92400e); box-shadow: 0 2px 8px rgba(146, 64, 14, 0.3); }
+    .rank-id { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .rank-id strong { color: var(--text); }
+    .rank-medal + .rank-name-wrap { min-width: 0; flex: 1; }
+    .rank-name { font-size: 17px; font-weight: 700; color: var(--navy-900); }
+    .rank-title { font-size: 13px; color: var(--primary-dark); font-weight: 600; margin-top: 1px; }
+    .rank-meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .donut {
+        width: 64px; height: 64px; border-radius: 50%; flex: 0 0 auto;
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
+    }
+    .donut .score-txt { background: #fff; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; }
+    .donut-label { text-align: center; font-size: 10.5px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+    .rank-score-col { display: flex; flex-direction: column; align-items: center; margin-left: auto; flex: 0 0 auto; }
+
+    .rank-body { padding: 16px 20px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+    @media (max-width: 1020px) { .rank-body { grid-template-columns: 1fr; } }
+    .block { margin-bottom: 14px; }
+    .block:last-child { margin-bottom: 0; }
+    .block-label {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+        font-weight: 700; color: var(--muted); margin-bottom: 7px; display: flex; align-items: center; gap: 6px;
+    }
+    .block-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+    .skill-line { display: flex; flex-wrap: wrap; gap: 4px; }
+    .kv { font-size: 13px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 16px; }
+    .kv .kv-item { background: #f8fafc; border-radius: 8px; padding: 7px 10px; }
+    .kv .kv-item b { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
+    .kv .kv-item span { font-size: 13px; font-weight: 600; }
+    .why-box {
+        background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm);
+        padding: 12px 14px; font-size: 13px; color: #78350f; margin-top: 6px;
+    }
+    .why-box .why-label { font-weight: 700; display: flex; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .scorebars { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin-top: 6px; }
+    @media (max-width: 560px) { .scorebars { grid-template-columns: 1fr; } }
+    .scorebar .sb-label { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+    .bar-track { height: 7px; background: var(--border-soft); border-radius: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 6px; background: var(--primary); transition: width 0.5s ease; }
+    .bar-fill.green { background: var(--green); }
+    .bar-fill.amber { background: var(--amber); }
+    .bar-fill.red { background: var(--red); }
+    .mini-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .mini-list { font-size: 12.5px; display: grid; gap: 4px; }
+    .mini-list li { margin-left: 16px; }
+
+    /* ---------- Modal ---------- */
+    .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 100;
+        display: flex; align-items: center; justify-content: center; padding: 24px;
+        backdrop-filter: blur(3px);
+    }
+    .modal {
+        background: #fff; border-radius: 16px; max-width: 880px; width: 100%;
+        max-height: 90vh; display: flex; flex-direction: column;
+        box-shadow: var(--shadow-lg); overflow: hidden; animation: modal-in 0.2s ease;
+    }
+    @keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .modal-head {
+        padding: 18px 22px; border-bottom: 1px solid var(--border-soft);
+        display: flex; align-items: center; gap: 14px;
+        background: linear-gradient(125deg, #0f172a, #1e3a8a); color: #fff;
+    }
+    .modal-head h3 { font-size: 17px; font-weight: 700; }
+    .modal-head .m-sub { font-size: 12.5px; opacity: 0.85; margin-top: 2px; }
+    .modal-close { margin-left: auto; background: rgba(255, 255, 255, 0.15); border-radius: 10px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: #fff; border: none; }
+    .modal-close:hover { background: rgba(255, 255, 255, 0.3); }
+    .modal-body { padding: 20px 22px; overflow-y: auto; display: grid; gap: 18px; }
+    .modal-body h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+    .modal-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 720px) { .modal-sections { grid-template-columns: 1fr; } }
+    .field { margin-bottom: 8px; }
+    .field b { font-size: 11.5px; color: var(--muted); display: block; font-weight: 600; }
+    .field span { font-size: 13.5px; }
+    pre.resume-text {
+        background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 14px; font-size: 12px; line-height: 1.6; white-space: pre-wrap;
+        word-break: break-word; max-height: 300px; overflow-y: auto; font-family: "SF Mono", Consolas, monospace;
+    }
+
+    /* ---------- Loading overlay ---------- */
+    #rank-loading {
+        position: fixed; inset: 0; z-index: 150;
+        background: rgba(15, 23, 42, 0.35); backdrop-filter: blur(2px);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .rank-load-card {
+        background: #fff; border-radius: 16px; padding: 30px 38px;
+        text-align: center; box-shadow: var(--shadow-lg); max-width: 420px; width: 90%;
+    }
+    .spinner {
+        width: 44px; height: 44px; margin: 0 auto 16px;
+        border: 4px solid var(--border); border-top-color: var(--primary);
+        border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .rank-load-card .rt { font-weight: 700; font-size: 15px; }
+    .rank-load-card .rs { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+
+    footer { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 20px 30px; }
+</style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <div class="brand-mark">AI</div>
+        <div>
+            <h1>AI Resume Screening &amp; Candidate Ranking</h1>
+            <div class="subtitle">Recruiter dashboard &middot; JD matching, hybrid AI scoring, GPU-accelerated</div>
+        </div>
+    </div>
+    <div class="header-stats">
+        <div class="stat-chip"><span class="dot online"></span><span>API</span><strong id="health-badge">checking&hellip;</strong></div>
+        <div class="stat-chip">Candidates <strong id="candidate-count">0</strong></div>
+        <div class="stat-chip">Jobs <strong id="job-count">0</strong></div>
+        <div class="stat-chip">Ranked <strong id="ranked-count">0</strong></div>
+    </div>
+</header>
+
+<div id="toasts"></div>
+<div id="rank-loading" class="hidden">
+    <div class="rank-load-card">
+        <div class="spinner"></div>
+        <div class="rt">Ranking candidates&hellip;</div>
+        <div class="rs" id="rank-load-status">Evaluating all candidates against the selected job</div>
+    </div>
+</div>
+
+<main>
+    <!-- ================= 1. JOB DESCRIPTION ================= -->
+    <section class="panel" id="jd-panel">
+        <div class="panel-head">
+            <div class="step-badge">1</div>
+            <h2>Create a Job Description</h2>
+            <span class="hint">Paste the JD text or upload the JD file. The system extracts required skills, experience and education requirements.</span>
+        </div>
+        <div class="grid-2s">
+            <div>
+                <div class="form-grid">
+                    <div>
+                        <label for="jd-title">Job Title</label>
+                        <input type="text" id="jd-title" placeholder="e.g. Senior Python Backend Developer">
+                    </div>
+                    <div></div>
+                </div>
+                <label for="jd-text">Paste Job Description Text</label>
+                <textarea id="jd-text" placeholder="Paste the full job description here - responsibilities, required skills, years of experience, education requirements..."></textarea>
+                <div class="file-field">
+                    <input type="file" id="jd-file" accept=".pdf,.docx,.txt,.md">
+                    <div class="file-meta" id="jd-file-meta">Or upload a JD file (PDF / DOCX / TXT / MD). Max file size is enforced by the API.</div>
+                </div>
+                <div class="btn-row">
+                    <button id="create-job-btn">Create Job &amp; Save</button>
+                    <button id="clear-jd-btn" class="ghost" type="button">Clear</button>
+                </div>
+                <div id="job-result" class="alert hidden"></div>
+            </div>
+            <div>
+                <label for="existing-jobs-list">Created Jobs</label>
+                <div class="jobs-list" id="existing-jobs"><div class="empty-state">No jobs created yet.</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 2. RANK CANDIDATES ================= -->
+    <section class="panel" id="rank-panel">
+        <div class="panel-head">
+            <div class="step-badge">2</div>
+            <h2>Rank Candidates for a Job</h2>
+            <span class="hint">Choose a job, pick how many top candidates you need, then run the ranking engine.</span>
+        </div>
+        <div class="rank-controls">
+            <div>
+                <label for="job-select">Select Job</label>
+                <select id="job-select"></select>
+            </div>
+            <div id="topn-wrap">
+                <label for="top-n">Show Top Candidates</label>
+                <select id="top-n">
+                    <option value="5" selected>Top 5</option>
+                    <option value="6">Top 6</option>
+                    <option value="10">Top 10</option>
+                    <option value="custom">Custom number</option>
+                </select>
+            </div>
+            <div id="custom-n-wrap" class="hidden">
+                <label for="custom-n">Number of Candidates (1-20)</label>
+                <input type="number" id="custom-n" min="1" max="20" value="8">
+            </div>
+            <div>
+                <button id="rank-btn" class="primary-lg">Rank Candidates</button>
+            </div>
+        </div>
+        <div class="weights-line" id="weights-line">Loading scoring weights&hellip;</div>
+    </section>
+
+    <!-- ================= 3. RANKING RESULTS ================= -->
+    <section class="panel hidden" id="results-panel">
+        <div class="panel-head">
+            <div class="step-badge">3</div>
+            <h2>Ranking Results</h2>
+            <span class="hint" id="results-source">Results are persisted to PostgreSQL and restored on refresh.</span>
+        </div>
+        <div class="result-summary hidden" id="results-summary"></div>
+        <div id="results-list"></div>
+        <div id="results-empty" class="empty-state hidden">
+            <div class="empty-icon">RD</div>
+            No ranking results yet for this job.
+            <div style="margin-top:8px;">Select a job and click <strong>Rank Candidates</strong> to evaluate the candidate database.</div>
+        </div>
+    </section>
+
+    <!-- ================= 4. CANDIDATE DATABASE ================= -->
+    <section class="panel" id="db-panel">
+        <div class="panel-head db-head">
+            <div class="step-badge">4</div>
+            <h2>Candidate Database</h2>
+            <span class="hint">Search, filter, upload and inspect every candidate.</span>
+            <span class="tag" id="db-count-tag">0 candidates</span>
+            <button id="db-toggle-btn" class="ghost collapse-btn" type="button" aria-expanded="false">Expand</button>
+        </div>
+        <div class="db-summary" id="db-summary">The full candidate table is collapsed. Click <strong>Expand</strong> to search, filter, upload and inspect candidates.</div>
+
+        <div id="db-body" class="hidden">
+            <div class="db-tools">
+                <div class="db-upload">
+                    <label for="resume-file">Upload a resume</label>
+                    <div class="db-upload-row">
+                        <input type="file" id="resume-file" accept=".pdf,.docx">
+                        <button id="upload-resume-btn" class="secondary">Upload &amp; Process</button>
+                    </div>
+                    <div id="upload-result" class="alert hidden"></div>
+                </div>
+                <div class="db-search">
+                    <label style="margin-top:0;">Quick search &amp; filters</label>
+                    <div class="toolbar" style="margin-bottom:0;">
+                        <div class="tb-field">
+                            <input type="search" id="cand-search" placeholder="Search name, title, skills, summary...">
+                        </div>
+                        <div class="tb-field">
+                            <select id="cand-seni">
+                                <option value="">All seniority</option>
+                                <option>Junior</option>
+                                <option>Mid-Level</option>
+                                <option>Senior</option>
+                                <option>Lead</option>
+                                <option>Manager</option>
+                            </select>
+                        </div>
+                        <div class="tb-field">
+                            <select id="cand-min-exp">
+                                <option value="">Any experience</option>
+                                <option value="2">2+ years</option>
+                                <option value="4">4+ years</option>
+                                <option value="6">6+ years</option>
+                                <option value="8">8+ years</option>
+                                <option value="10">10+ years</option>
+                            </select>
+                        </div>
+                        <div class="tb-field">
+                            <select id="cand-sort">
+                                <option value="newest">Newest first</option>
+                                <option value="name">Name A-Z</option>
+                                <option value="exp">Most experienced</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="cand-table">
+                    <thead>
+                        <tr>
+                            <th>Candidate</th>
+                            <th>Job Title</th>
+                            <th>Experience</th>
+                            <th>Seniority</th>
+                            <th>Key Skills</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cand-tbody"></tbody>
+                </table>
+            </div>
+            <div id="cand-empty" class="empty-state hidden">Loading candidates&hellip;</div>
+            <div class="pager">
+                <span class="muted" id="cand-pager-info"></span>
+                <div class="btn-row">
+                    <button id="cand-prev" class="ghost" type="button">&larr; Prev</button>
+                    <button id="cand-next" class="ghost" type="button">Next &rarr;</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer>AI Resume Screening &amp; Candidate Ranking &middot; FastAPI + PostgreSQL (pgvector) + sentence-transformers &middot; Grok-enabled hybrid extraction</footer>
+
+<div id="modal-root"></div>
+
+<script>
+const BACKEND_URL = "http://127.0.0.1:8000";
+
+/* ================= State ================= */
+let candidatesCache = [];
+let jobsCache = [];
+let selectedJobId = null;
+let lastTopN = 5;
+let filteredCandidates = [];
+let candPage = 0;
+const CAND_PAGE_SIZE = 25;
+
+const el = (id) => document.getElementById(id);
+
+/* ================= Utils ================= */
+async function api(path, options = {}) {
+    const res = await fetch(BACKEND_URL + path, options);
+    if (!res.ok) {
+        let detail = "Request failed";
+        try {
+            const data = await res.json();
+            detail = data.detail || JSON.stringify(data);
+        } catch (e) { /* ignore */ }
+        throw new Error(detail);
+    }
+    return res.json();
+}
+
+function escapeHtml(str) {
+    if (str == null) return "";
+    const div = document.createElement("div");
+    div.textContent = String(str);
+    return div.innerHTML;
+}
+
+function formatDate(d) {
+    if (!d) return "—";
+    const dt = new Date(d);
+    if (isNaN(dt)) return "—";
+    return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+/* ================= Toasts ================= */
+function toast(msg, type = "info") {
+    const root = el("toasts");
+    const t = document.createElement("div");
+    t.className = "toast " + type;
+    t.innerHTML = `<span>${escapeHtml(msg)}</span>`;
+    root.appendChild(t);
+    setTimeout(() => {
+        t.classList.add("leaving");
+        setTimeout(() => t.remove(), 260);
+    }, 4200);
+}
+
+function showAlert(id, msg, type) {
+    const box = el(id);
+    box.classList.remove("hidden");
+    box.className = "alert " + (type || "info");
+    box.textContent = msg;
+}
+
+function hideAlert(id) {
+    el(id).classList.add("hidden");
+}
+
+/* ================= Candidate detail (modal) ================= */
+function openDetail(candidateId, rankInfo) {
+    const root = el("modal-root");
+    root.innerHTML = `
+        <div class="modal-backdrop">
+            <div class="modal">
+                <div class="modal-head">
+                    <div><h3>Loading candidate profile&hellip;</h3><div class="m-sub">Fetching from database</div></div>
+                    <button class="modal-close" id="modal-close">&times;</button>
+                </div>
+                <div class="modal-body"><div class="empty-state">Loading&hellip;</div></div>
+            </div>
+        </div>`;
+    el("modal-close").addEventListener("click", closeModal);
+    root.querySelector(".modal-backdrop").addEventListener("click", (ev) => {
+        if (ev.target === ev.currentTarget) closeModal();
+    });
+    document.addEventListener("keydown", onModalKey);
+
+    api("/api/candidates/" + candidateId).then((c) => {
+        renderModal(root, c, rankInfo || null);
+    }).catch((err) => {
+        root.querySelector(".modal-body").innerHTML = `<div class="alert error">Failed to load profile: ${escapeHtml(err.message)}</div>`;
+    });
+}
+
+function onModalKey(ev) {
+    if (ev.key === "Escape") closeModal();
+}
+
+function closeModal() {
+    el("modal-root").innerHTML = "";
+    document.removeEventListener("keydown", onModalKey);
+}
+
+function seniClass(level) {
+    const l = (level || "").toLowerCase();
+    if (l.includes("senior") || l.includes("sr")) return "seni-senior";
+    if (l.includes("mid")) return "seni-mid";
+    if (l.includes("junior") || l.includes("jr")) return "seni-junior";
+    if (l.includes("lead") || l.includes("manager")) return "seni-lead";
+    return "seni-mid";
+}
+
+function renderModal(root, c, rankInfo) {
+    const expertise = (c.functional_expertise || []).map(e =>
+        `<div class="field"><b>${escapeHtml(e.area || "Area")}</b><span>${e.years != null ? escapeHtml(e.years) + " yrs" : "—"}${e.details ? " &middot; " + escapeHtml(e.details) : ""}</span></div>`).join("");
+    const lead = c.leadership || {};
+    const leadHtml = lead.has_leadership
+        ? `<div class="field"><b>Team size</b><span>${lead.team_size != null ? escapeHtml(lead.team_size) : "—"}</span></div>
+           ${(lead.roles || []).length ? `<div class="field"><b>Roles</b><span>${escapeHtml((lead.roles || []).join(", "))}</span></div>` : ""}
+           ${(lead.responsibilities || []).length ? `<div class="field"><b>Responsibilities</b><ul class="mini-list">${lead.responsibilities.map(r => `<li>${escapeHtml(r)}</li>`).join("")}</ul></div>` : ""}`
+        : `<div class="muted">No leadership roles identified.</div>`;
+    const edu = (c.education || []).length
+        ? c.education.map((e, i) => `
+            <div style="border:1px solid var(--border-soft); border-radius:8px; padding:9px 11px; margin-bottom:6px;">
+                <div class="field" style="margin:0;"><b>#${i + 1} ${escapeHtml(e.degree || "Degree")}${e.field ? " &middot; " + escapeHtml(e.field) : ""}</b></div>
+                <div class="muted">${escapeHtml(e.institution || "—")}${e.graduation_year ? " &middot; Graduated " + escapeHtml(e.graduation_year) : ""}</div>
+            </div>`).join("")
+        : `<div class="muted">No education records extracted.</div>`;
+
+    const head = root.querySelector(".modal-head");
+    head.innerHTML = `
+        <div><h3>${escapeHtml(c.name || "Unknown Candidate")}</h3>
+        <div class="m-sub">${escapeHtml(c.job_title || "No job title")} ${c.seniority_level ? "&middot; " + escapeHtml(c.seniority_level) : ""}</div></div>
+        <button class="modal-close" id="modal-close">&times;</button>`;
+    root.querySelector("#modal-close").addEventListener("click", closeModal);
+
+    const scoreHtml = rankInfo ? `
+        <div>
+            <h4>Ranking Score — ${escapeHtml(rankInfo.jobTitle)}</h4>
+            <div class="kv">
+                <div class="kv-item"><b>Match score</b><span>${rankInfo.matchScore.toFixed(1)}%</span></div>
+                <div class="kv-item"><b>Rank</b><span>#${rankInfo.rank}</span></div>
+                <div class="kv-item"><b>Experience match</b><span>${escapeHtml(rankInfo.experienceMatch)}</span></div>
+            </div>
+            <div class="scorebars" style="margin-top:10px;">
+                ${["skills", "experience", "semantic", "education"].map(k => {
+                    const v = rankInfo.scores[k];
+                    return `<div class="scorebar"><div class="sb-label"><span>${k} score</span><span>${v != null ? v.toFixed(0) + "%" : "—"}</span></div>
+                        <div class="bar-track"><div class="bar-fill ${k === "skills" ? "green" : k === "semantic" ? "amber" : ""}" style="width:${v || 0}%"></div></div></div>`;
+                }).join("")}
+            </div>
+            <div class="why-box" style="margin-top:12px;"><div class="why-label">Why selected</div>${escapeHtml(rankInfo.explanation || "")}</div>
+        </div>` : "";
+
+    root.querySelector(".modal-body").innerHTML = `
+        <div>
+            <h4>Profile</h4>
+            <div class="kv">
+                <div class="kv-item"><b>Phone</b><span>${escapeHtml(c.phone_number || "—")}</span></div>
+                <div class="kv-item"><b>Experience</b><span>${c.total_experience_years != null ? escapeHtml(c.total_experience_years) + " years" : "—"}</span></div>
+                <div class="kv-item"><b>Seniority</b><span>${escapeHtml(c.seniority_level || "—")}</span></div>
+                <div class="kv-item"><b>Added</b><span>${formatDate(c.created_at)}</span></div>
+                <div class="kv-item"><b>Source</b><span>${c.is_seed ? "Seeded data" : "Resume upload"}</span></div>
+            </div>
+        </div>
+        ${scoreHtml}
+        <div><h4>Career Summary</h4><div style="font-size:13.5px; white-space:pre-wrap;">${escapeHtml(c.career_summary || "—")}</div></div>
+        <div><h4>Capability Tags</h4><div class="mini-tags">${(c.capability_tags || []).map(s => `<span class="chip tag">${escapeHtml(s)}</span>`).join("") || '<span class="muted">None</span>'}</div></div>
+        <div class="modal-sections">
+            <div>
+                <h4>Functional Expertise</h4>
+                ${expertise || '<div class="muted">Not extracted.</div>'}
+            </div>
+            <div>
+                <h4>Leadership Experience</h4>
+                ${leadHtml}
+            </div>
+        </div>
+        <div><h4>Education</h4>${edu}</div>
+        ${c.resume_text ? `<div><h4>Resume Text</h4><pre class="resume-text">${escapeHtml(c.resume_text)}</pre></div>` : ""}`;
+}
+
+/* ================= Health ================= */
+async function loadHealth() {
+    try {
+        await api("/api/health");
+        el("health-badge").textContent = "online";
+    } catch (e) {
+        el("health-badge").textContent = "offline";
+    }
+}
+
+async function loadWeights() {
+    try {
+        const data = await api("/api/weights");
+        const w = data.scoring_weights || {};
+        const entries = Object.entries(w).map(([k, v]) => `<span><b>${escapeHtml(k.replace("_", " "))}</b>: ${Math.round(v * 100)}%</span>`);
+        el("weights-line").innerHTML = entries.length
+            ? "Scoring weights — " + entries.join("")
+            : "Scoring weights not configured.";
+    } catch (e) {
+        el("weights-line").textContent = "Could not load scoring weights.";
+    }
+}
+
+/* ================= Jobs ================= */
+async function loadJobs(preferredId) {
+    try {
+        const data = await api("/api/jobs");
+        jobsCache = data.jobs || [];
+        el("job-count").textContent = jobsCache.length;
+
+        const list = el("existing-jobs");
+        if (jobsCache.length === 0) {
+            list.innerHTML = '<div class="empty-state">No jobs created yet.<br><span style="font-size:12px;">Create one using the form to start ranking.</span></div>';
+            el("job-select").innerHTML = '<option value="">No jobs yet — create one first</option>';
+            return;
+        }
+
+        list.innerHTML = jobsCache.map(j => `
+            <div class="job-item ${j.id === selectedJobId ? "selected" : ""}" data-id="${j.id}">
+                <div style="min-width:0;">
+                    <div class="j-title">${escapeHtml(j.title)}</div>
+                    <div class="j-meta">Created ${formatDate(j.created_at)} &middot; ${escapeHtml((j.required_skills || "").slice(0, 60))}${(j.required_skills || "").length > 60 ? "…" : ""}</div>
+                </div>
+                <span class="j-id">ID ${j.id}</span>
+            </div>`).join("");
+
+        list.querySelectorAll(".job-item").forEach(item => {
+            item.addEventListener("click", () => {
+                selectedJobId = parseInt(item.dataset.id, 10);
+                el("job-select").value = selectedJobId;
+                savePrefs();
+                loadPersistedResults(selectedJobId);
+                highlightJob(selectedJobId);
+            });
+        });
+
+        el("job-select").innerHTML = jobsCache.map(j => `<option value="${j.id}">${escapeHtml(j.title)} (ID ${j.id})</option>`).join("");
+
+        const jobId = preferredId || selectedJobId || (jobsCache.length ? jobsCache[0].id : null);
+        if (jobId) {
+            selectedJobId = jobId;
+            el("job-select").value = jobId;
+            highlightJob(jobId);
+            await loadPersistedResults(jobId);
+        } else {
+            hideResultsPanel();
+        }
+    } catch (e) {
+        toast("Failed to load jobs: " + e.message, "error");
+        el("existing-jobs").innerHTML = `<div class="alert error">${escapeHtml(e.message)}</div>`;
+    }
+}
+
+function highlightJob(jobId) {
+    document.querySelectorAll(".job-item").forEach(item => {
+        item.classList.toggle("selected", parseInt(item.dataset.id, 10) === jobId);
+    });
+}
+
+/* ================= Candidates ================= */
+async function loadCandidates() {
+    const tbody = el("cand-tbody");
+    el("cand-empty").classList.remove("hidden");
+    el("cand-empty").textContent = "Loading candidates…";
+    tbody.innerHTML = Array.from({ length: 6 }).map(() => `
+        <tr>
+            <td><div class="skeleton" style="width:120px; margin-bottom:6px;"></div><div class="skeleton" style="width:80px;"></div></td>
+            <td><div class="skeleton" style="width:150px;"></div></td>
+            <td><div class="skeleton" style="width:50px;"></div></td>
+            <td><div class="skeleton" style="width:60px;"></div></td>
+            <td><div class="skeleton" style="width:160px;"></div></td>
+        </tr>`).join("");
+    try {
+        const data = await api("/api/candidates?limit=1000");
+        candidatesCache = data.candidates || [];
+        el("candidate-count").textContent = data.total;
+        el("db-count-tag").textContent = data.total + " candidates";
+        el("cand-empty").classList.add("hidden");
+        applyFilters();
+    } catch (e) {
+        el("cand-empty").classList.remove("hidden");
+        el("cand-empty").innerHTML = `<div class="alert error">Failed to load candidates: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
+function applyFilters() {
+    const term = (el("cand-search").value.trim() || "").toLowerCase();
+    const seni = el("cand-seni").value;
+    const minExp = parseFloat(el("cand-min-exp").value || "0");
+    const sort = el("cand-sort").value;
+
+    filteredCandidates = candidatesCache.filter(c => {
+        if (minExp && (c.total_experience_years == null || c.total_experience_years < minExp)) return false;
+        if (seni && (c.seniority_level || "").toLowerCase() !== seni.toLowerCase()) return false;
+        if (term) {
+            const hay = [
+                c.name, c.job_title, c.career_summary,
+                ...(c.capability_tags || [])
+            ].join(" ").toLowerCase();
+            if (!hay.includes(term)) return false;
+        }
+        return true;
+    });
+
+    if (sort === "name") {
+        filteredCandidates.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else if (sort === "exp") {
+        filteredCandidates.sort((a, b) => (b.total_experience_years || 0) - (a.total_experience_years || 0));
+    } else {
+        filteredCandidates.sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+
+    candPage = 0;
+    renderCandTable();
+}
+
+function renderCandTable() {
+    const tbody = el("cand-tbody");
+    const total = filteredCandidates.length;
+    const start = candPage * CAND_PAGE_SIZE;
+    const page = filteredCandidates.slice(start, start + CAND_PAGE_SIZE);
+
+    if (total === 0) {
+        el("cand-empty").classList.remove("hidden");
+        el("cand-empty").textContent = "No candidates match the current filters.";
+        tbody.innerHTML = "";
+    } else {
+        el("cand-empty").classList.add("hidden");
+        tbody.innerHTML = page.map(c => `
+            <tr data-id="${c.id}">
+                <td>
+                    <div class="cand-name">${escapeHtml(c.name || "Unknown Candidate")}</div>
+                    <div class="cand-sub">ID ${c.id} &middot; added ${formatDate(c.created_at)}</div>
+                </td>
+                <td>${escapeHtml(c.job_title || "—")}</td>
+                <td>${c.total_experience_years != null ? escapeHtml(c.total_experience_years + " yrs") : "—"}</td>
+                <td>${c.seniority_level ? `<span class="seni-badge ${seniClass(c.seniority_level)}">${escapeHtml(c.seniority_level)}</span>` : "—"}</td>
+                <td><div class="mini-tags">${(c.capability_tags || []).slice(0, 5).map(s => `<span class="chip tag">${escapeHtml(s)}</span>`).join("")}${(c.capability_tags || []).length > 5 ? `<span class="muted">+${(c.capability_tags || []).length - 5}</span>` : ""}</div></td>
+            </tr>`).join("");
+
+        tbody.querySelectorAll("tr").forEach(tr => {
+            tr.addEventListener("click", () => openDetail(parseInt(tr.dataset.id, 10), null));
+        });
+    }
+
+    el("cand-pager-info").textContent = total === 0
+        ? "No results"
+        : `Showing ${start + 1}-${Math.min(start + CAND_PAGE_SIZE, total)} of ${total} candidates`;
+    el("cand-prev").disabled = candPage === 0;
+    el("cand-next").disabled = start + CAND_PAGE_SIZE >= total;
+}
+
+/* ================= Candidate DB collapse ================= */
+function toggleDbCollapse() {
+    const body = el("db-body");
+    const summary = el("db-summary");
+    const btn = el("db-toggle-btn");
+    const collapsed = !body.classList.contains("hidden");
+    body.classList.toggle("hidden", collapsed);
+    summary.classList.toggle("hidden", !collapsed);
+    btn.textContent = collapsed ? "Expand" : "Collapse";
+    btn.setAttribute("aria-expanded", String(!collapsed));
+}
+
+/* ================= Ranking (live + persisted) ================= */
+function currentTopN() {
+    const choice = el("top-n").value;
+    if (choice === "custom") {
+        let n = parseInt(el("custom-n").value, 10);
+        if (isNaN(n) || n < 1) n = 1;
+        if (n > 20) n = 20;
+        return n;
+    }
+    return parseInt(choice, 10);
+}
+
+function syncTopNSelect() {
+    if (lastTopN === 5 || lastTopN === 6 || lastTopN === 10) {
+        el("top-n").value = String(lastTopN);
+        el("custom-n-wrap").classList.add("hidden");
+    } else {
+        el("top-n").value = "custom";
+        el("custom-n-wrap").classList.remove("hidden");
+        el("custom-n").value = String(lastTopN);
+    }
+}
+
+function setLoading(on) {
+    el("rank-loading").classList.toggle("hidden", !on);
+}
+
+async function rankCandidates() {
+    if (!selectedJobId) {
+        toast("Please create and select a job first.", "error");
+        return;
+    }
+    const topN = currentTopN();
+    setLoading(true);
+    try {
+        const data = await api("/api/jobs/" + selectedJobId + "/rank", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ top_n: topN })
+        });
+        lastTopN = topN;
+        savePrefs();
+        await ensureCandidates(data.top_candidates.map(c => c.candidate_id));
+        renderResults(data.top_candidates, {
+            jobTitle: data.job_title,
+            jobId: selectedJobId,
+            totalEvaluated: data.total_candidates_evaluated,
+            source: "live"
+        }, true);
+        toast(`Ranking complete — top ${data.top_candidates.length} shown for "${data.job_title}".`, "success");
+    } catch (e) {
+        toast("Ranking failed: " + e.message, "error");
+    } finally {
+        setLoading(false);
+    }
+}
+
+async function ensureCandidates(ids) {
+    const missing = ids.filter(id => !candidatesCache.some(c => c.id === id));
+    await Promise.all(missing.map(async (id) => {
+        try {
+            const c = await api("/api/candidates/" + id);
+            candidatesCache.push(c);
+        } catch (e) { /* candidate will render without profile */ }
+    }));
+    const seen = new Set();
+    candidatesCache = candidatesCache.filter(c => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+}
+
+function getCandidate(id) {
+    return candidatesCache.find(c => c.id === id) || null;
+}
+
+async function loadPersistedResults(jobId) {
+    if (!jobId) return;
+    el("results-panel").classList.remove("hidden");
+    el("results-empty").classList.add("hidden");
+    el("results-list").innerHTML = "";
+    el("results-summary").classList.add("hidden");
+    try {
+        const limit = lastTopN > 50 ? 50 : lastTopN;
+        const data = await api(`/api/jobs/${jobId}/results?limit=${limit}`);
+        if (!data.results || data.results.length === 0) {
+            setResultsEmpty(jobId);
+            return;
+        }
+        await ensureCandidates(data.results.map(r => r.candidate_id));
+        renderResults(data.results, {
+            jobTitle: data.job_title,
+            jobId: jobId,
+            totalEvaluated: null,
+            source: "saved"
+        });
+    } catch (e) {
+        if (String(e.message).includes("No ranking results")) {
+            setResultsEmpty(jobId);
+        } else {
+            setResultsEmpty(jobId, "Could not load saved results: " + e.message);
+        }
+    }
+}
+
+function setResultsEmpty(jobId, extraMsg) {
+    el("results-list").innerHTML = "";
+    el("results-summary").classList.add("hidden");
+    el("results-empty").classList.remove("hidden");
+    el("results-empty").innerHTML = extraMsg
+        ? `<div class="alert error">${escapeHtml(extraMsg)}</div>`
+        : `<div class="empty-icon">RD</div>No ranking results saved for this job yet (ID: ${jobId}).
+           <div style="margin-top:8px;">Click <strong>Rank Candidates</strong> to evaluate the candidate database.</div>`;
+}
+
+function hideResultsPanel() {
+    el("results-panel").classList.add("hidden");
+}
+
+function showRankedCount() {
+    el("ranked-count").textContent = document.querySelectorAll(".rank-card").length;
+}
+
+/* ================= Render results ================= */
+function scoreColor(score) {
+    if (score >= 80) return "#16a34a";
+    if (score >= 60) return "#2563eb";
+    if (score >= 40) return "#d97706";
+    return "#dc2626";
+}
+
+function donutStyle(score) {
+    const s = Math.max(0, Math.min(100, score || 0));
+    const c = scoreColor(s);
+    return `background:conic-gradient(${c} ${s * 3.6}deg, #eef2f7 0deg);`;
+}
+
+function renderResults(results, meta, scroll) {
+    const panel = el("results-panel");
+    const list = el("results-list");
+    panel.classList.remove("hidden");
+    el("results-empty").classList.add("hidden");
+
+    const jobObj = jobsCache.find(j => j.id === meta.jobId) || null;
+    const required = (jobObj && jobObj.required_skills) || "";
+
+    const summary = el("results-summary");
+    summary.classList.remove("hidden");
+    const srcHtml = meta.source === "saved"
+        ? `<span class="pill">Persisted results &middot; restored from database</span>`
+        : `<span class="pill">Live ranking &middot; results saved</span>`;
+    summary.innerHTML = `
+        <span><strong style="font-weight:700; color:#1e3a8a;">${escapeHtml(meta.jobTitle || "Job " + meta.jobId)}</strong></span>
+        ${meta.totalEvaluated != null ? `<span class="pill">${meta.totalEvaluated} candidates evaluated</span>` : ""}
+        <span class="pill">Top ${results.length}</span>
+        ${srcHtml}
+        <span style="margin-left:auto; color:#1d4ed8; cursor:pointer;" id="results-refresh">&#8635; Re-rank</span>`;
+
+    el("results-refresh").addEventListener("click", () => rankCandidates());
+
+    list.innerHTML = results.map(r => {
+        const c = getCandidate(r.candidate_id);
+        const matched = (r.matched_skills || []).slice(0, 24);
+        const missing = (r.missing_skills || []).slice(0, 24);
+        const canShowMore = (r.matched_skills || []).length > 24 || (r.missing_skills || []).length > 24;
+
+        const expertise = (c && c.functional_expertise || []).slice(0, 6).map(e =>
+            `${escapeHtml(e.area || "")}${e.years != null ? " (" + escapeHtml(e.years) + "y)" : ""}`).join(" · ");
+        const lead = (c && c.leadership) || {};
+        const leadTxt = lead.has_leadership
+            ? `Leadership: ${(lead.roles || []).slice(0, 2).join(", ") || "Yes"}${lead.team_size ? " · team of " + escapeHtml(lead.team_size) : ""}`
+            : "Leadership: none identified";
+        const eduTxt = (c && c.education || []).slice(0, 2).map(e =>
+            `${e.degree || ""}${e.field ? ", " + e.field : ""}${e.institution ? " — " + e.institution : ""}`).join("; ") || "Not extracted";
+        const tagsTxt = (c && c.capability_tags || []).slice(0, 12);
+
+        const scores = {
+            skills: r.skills_score,
+            experience: r.experience_score,
+            semantic: r.semantic_score,
+            education: r.education_score
+        };
+
+        return `
+        <div class="rank-card" data-cid="${r.candidate_id}">
+            <div class="rank-card-head">
+                <div class="rank-medal r${r.rank}">${r.rank}</div>
+                <div class="rank-name-wrap">
+                    <div class="rank-name">${escapeHtml(r.candidate_name)}</div>
+                    <div class="rank-title">${c ? escapeHtml(c.job_title || "Candidates job title") : escapeHtml(r.candidate_name)}</div>
+                    <div class="rank-meta">
+                        ${c && c.total_experience_years != null ? `<span><strong>${escapeHtml(c.total_experience_years)} yrs</strong> experience</span>` : ""}
+                        ${c && c.seniority_level ? `<span class="seni-badge ${seniClass(c.seniority_level)}">${escapeHtml(c.seniority_level)}</span>` : ""}
+                        <span class="chip exp">${escapeHtml(r.experience_match || "experience match")}</span>
+                        <span>Candidate ID ${r.candidate_id}</span>
+                    </div>
+                </div>
+                <div class="rank-score-col">
+                    <div class="donut" style="${donutStyle(r.match_score)}"><div class="score-txt">${r.match_score != null ? Math.round(r.match_score) + "%" : "—"}</div></div>
+                    <div class="donut-label">Match score</div>
+                </div>
+            </div>
+            <div class="rank-body">
+                <div style="min-width:0;">
+                    <div class="block">
+                        <div class="block-label">Matched skills ${matched.length ? `(${matched.length})` : ""}</div>
+                        <div class="skill-line">${matched.length ? matched.map(s => `<span class="chip match">${escapeHtml(s)}</span>`).join("") : '<span class="muted">None matched</span>'}</div>
+                    </div>
+                    ${missing.length ? `<div class="block">
+                        <div class="block-label">Missing skills (${missing.length})</div>
+                        <div class="skill-line">${missing.map(s => `<span class="chip miss">${escapeHtml(s)}</span>`).join("")}</div>
+                    </div>` : ""}
+                    ${canShowMore ? `<div class="muted" style="font-size:11.5px;">Showing first 24. Full skill list available in the candidate profile.</div>` : ""}
+                    <div class="block" style="margin-top:8px;">
+                        <div class="block-label">Breakdown</div>
+                        <div class="scorebars">
+                            ${Object.entries({ Skills: "skills", Experience: "experience", Semantic: "semantic", Education: "education" }).map(([label, k]) =>
+                                `<div class="scorebar"><div class="sb-label"><span>${label}</span><span>${scores[k] != null ? scores[k].toFixed(0) + "%" : "—"}</span></div>
+                                <div class="bar-track"><div class="bar-fill ${k === "skills" ? "green" : k === "semantic" ? "amber" : ""}" style="width:${scores[k] || 0}%"></div></div></div>`).join("")}
+                        </div>
+                    </div>
+                    <div class="block" style="margin-top:8px;">
+                        <div class="block-label">Why this candidate was selected</div>
+                        <div class="why-box"><div class="why-label">Why selected</div>${escapeHtml(r.explanation || "Fits the role based on semantic similarity and skills match.")}</div>
+                    </div>
+                </div>
+                <div style="min-width:0;">
+                    ${c ? `
+                        <div class="block">
+                            <div class="block-label">Career summary</div>
+                            <div style="font-size:12.5px; color:#334155; white-space:pre-wrap; max-height:120px; overflow-y:auto;">${escapeHtml((c.career_summary || "—").slice(0, 500))}</div>
+                        </div>
+                        <div class="block">
+                            <div class="block-label">Functional expertise</div>
+                            <div style="font-size:12.5px; color:#334155;">${expertise ? expertise.slice(0, 300) : "Not extracted"}</div>
+                        </div>
+                        <div class="block">
+                            <div class="block-label">Leadership experience</div>
+                            <div style="font-size:12.5px; color:#334155;">${escapeHtml(leadTxt)}</div>
+                        </div>
+                        <div class="block">
+                            <div class="block-label">Education</div>
+                            <div style="font-size:12.5px; color:#334155;">${escapeHtml(eduTxt)}</div>
+                        </div>
+                    ` : '<div class="muted">Profile details not yet loaded for this candidate.</div>'}
+                    <div class="block">
+                        <div class="block-label">Capability tags</div>
+                        <div class="mini-tags">${tagsTxt.map(s => `<span class="chip tag">${escapeHtml(s)}</span>`).join("") || '<span class="muted">None</span>'}</div>
+                    </div>
+                    <div class="btn-row" style="margin-top:6px;">
+                        <button class="ghost" data-view="${r.candidate_id}">View full profile</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join("");
+
+    list.querySelectorAll("button[data-view]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const cid = parseInt(btn.dataset.view, 10);
+            const c = getCandidate(cid);
+            const res = results.find(r => r.candidate_id === cid);
+            const rankInfo = {
+                rank: res.rank,
+                matchScore: res.match_score,
+                experienceMatch: res.experience_match,
+                explanation: res.explanation,
+                jobTitle: meta.jobTitle,
+                scores: { skills: res.skills_score, experience: res.experience_score, semantic: res.semantic_score, education: res.education_score }
+            };
+            openDetail(cid, c ? rankInfo : null);
+        });
+    });
+
+    list.querySelectorAll(".rank-card[data-cid]").forEach(card => {
+        card.addEventListener("click", (ev) => {
+            if (ev.target.closest("button")) return;
+            const cid = parseInt(card.dataset.cid, 10);
+            const c = getCandidate(cid);
+            if (c) openDetail(cid, null);
+        });
+    });
+
+    if (scroll) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    showRankedCount();
+    el("results-panel").classList.remove("hidden");
+}
+
+/* ================= Prefs (persistence) ================= */
+function savePrefs() {
+    try {
+        localStorage.setItem("ai-ranked-job", String(selectedJobId || ""));
+        localStorage.setItem("ai-ranked-topn", String(lastTopN));
+    } catch (e) { /* ignore */ }
+}
+
+function loadPrefs() {
+    try {
+        const j = parseInt(localStorage.getItem("ai-ranked-job") || "", 10);
+        const n = parseInt(localStorage.getItem("ai-ranked-topn") || "", 10);
+        if (!isNaN(j)) selectedJobId = j;
+        if (!isNaN(n) && n >= 1 && n <= 20) lastTopN = n;
+    } catch (e) { /* ignore */ }
+}
+
+/* ================= Event wiring ================= */
+function initEvents() {
+    el("create-job-btn").addEventListener("click", createJob);
+    el("clear-jd-btn").addEventListener("click", () => {
+        el("jd-title").value = "";
+        el("jd-text").value = "";
+        el("jd-file").value = "";
+        el("jd-file-meta").textContent = "Or upload a JD file (PDF / DOCX / TXT / MD).";
+        hideAlert("job-result");
+    });
+    el("jd-file").addEventListener("change", () => {
+        const f = el("jd-file").files[0];
+        el("jd-file-meta").textContent = f ? `Selected: ${f.name} (${(f.size / 1024).toFixed(1)} KB)` : "Or upload a JD file (PDF / DOCX / TXT / MD).";
+    });
+
+    el("upload-resume-btn").addEventListener("click", uploadResume);
+
+    el("rank-btn").addEventListener("click", rankCandidates);
+    el("top-n").addEventListener("change", () => {
+        el("custom-n-wrap").classList.toggle("hidden", el("top-n").value !== "custom");
+    });
+    el("custom-n").addEventListener("input", () => {
+        let v = parseInt(el("custom-n").value, 10);
+        if (v > 20) el("custom-n").value = 20;
+    });
+    el("job-select").addEventListener("change", () => {
+        selectedJobId = parseInt(el("job-select").value, 10);
+        savePrefs();
+        loadPersistedResults(selectedJobId);
+        highlightJob(selectedJobId);
+    });
+
+    el("db-toggle-btn").addEventListener("click", toggleDbCollapse);
+    el("cand-search").addEventListener("input", debounce(applyFilters, 260));
+    el("cand-seni").addEventListener("change", applyFilters);
+    el("cand-min-exp").addEventListener("change", applyFilters);
+    el("cand-sort").addEventListener("change", applyFilters);
+    el("cand-prev").addEventListener("click", () => { if (candPage > 0) { candPage--; renderCandTable(); } });
+    el("cand-next").addEventListener("click", () => { if ((candPage + 1) * CAND_PAGE_SIZE < filteredCandidates.length) { candPage++; renderCandTable(); } });
+}
+
+/* ================= Create job ================= */
+async function createJob() {
+    const title = el("jd-title").value.trim();
+    const text = el("jd-text").value.trim();
+    const file = el("jd-file").files[0];
+
+    if (!text && !file) {
+        showAlert("job-result", "Please paste a job description or upload a JD file.", "error");
+        return;
+    }
+
+    const form = new FormData();
+    if (title) form.append("title", title);
+    if (text) form.append("description", text);
+    if (file) form.append("file", file);
+
+    const btn = el("create-job-btn");
+    btn.disabled = true;
+    btn.textContent = "Creating job…";
+    try {
+        const job = await api("/api/jobs", { method: "POST", body: form });
+        selectedJobId = job.id;
+        lastTopN = lastTopN || 5;
+        savePrefs();
+        showAlert("job-result", `Job created: ${escapeHtml(job.title)} (ID: ${job.id}). Required skills: ${escapeHtml((job.required_skills || "none").slice(0, 180))}.`, "success");
+        toast(`Job "${job.title}" created.`, "success");
+        el("rank-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+        el("jd-text").value = "";
+        el("jd-file").value = "";
+        el("jd-title").value = "";
+        await loadJobs(job.id);
+    } catch (e) {
+        showAlert("job-result", e.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Create Job & Save";
+    }
+}
+
+/* ================= Upload resume ================= */
+async function uploadResume() {
+    const file = el("resume-file").files[0];
+    if (!file) {
+        showAlert("upload-result", "Please select a resume file (.pdf or .docx).", "error");
+        return;
+    }
+    const form = new FormData();
+    form.append("file", file);
+
+    const btn = el("upload-resume-btn");
+    btn.disabled = true;
+    btn.textContent = "Processing…";
+    try {
+        const res = await api("/api/candidates/upload", { method: "POST", body: form });
+        showAlert("upload-result", `Resume processed: ${escapeHtml(res.name || "Unknown")} (ID: ${res.id}). ${escapeHtml((res.career_summary_preview || "").slice(0, 140))}`, "success");
+        toast(`Resume processed: ${res.name || "candidate #" + res.id}`, "success");
+        el("resume-file").value = "";
+        await loadCandidates();
+    } catch (e) {
+        showAlert("upload-result", e.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Upload & Process Resume";
+    }
+}
+
+/* ================= Boot ================= */
+(async function init() {
+    loadPrefs();
+    initEvents();
+    syncTopNSelect();
+    loadHealth();
+    loadWeights();
+    loadCandidates();
+    await loadJobs(selectedJobId || null);
+})();
+</script>
+</body>
+</html>
