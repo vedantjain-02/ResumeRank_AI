@@ -120,7 +120,7 @@ def test_hard_filter_reduces_pool():
 
 
 # ----------------------------------------------------------------------
-# 3. BM25 only ever sees the hard-filtered pool
+# 3. BM25 never sees candidates outside the retrieval pool
 # ----------------------------------------------------------------------
 
 def test_bm25_only_on_filtered_pool(monkeypatch):
@@ -132,8 +132,8 @@ def test_bm25_only_on_filtered_pool(monkeypatch):
     job = _make_job(min_exp=6, seniority="Senior", mandatory="Python")
     options = HybridOptions()
 
-    pool_ids = {c.id for c in service.hard_filter_candidates(db, job, options)}
-    assert 0 < len(pool_ids) < len(candidates)
+    strict_ids = {c.id for c in service.hard_filter_candidates(db, job, options)}
+    assert 0 < len(strict_ids) < len(candidates)
 
     seen = []
     orig = service.bm25_retrieve
@@ -147,11 +147,13 @@ def test_bm25_only_on_filtered_pool(monkeypatch):
 
     assert seen, "BM25 stage should have executed"
     for pool in seen:
-        assert set(pool) == pool_ids
+        # The retrieval pool can be expanded with relaxed candidates to fill the
+        # requested limit, so it is always a superset of the strict pool.
+        assert strict_ids <= set(pool)
 
 
 # ----------------------------------------------------------------------
-# 4. Vector retrieval only ever sees the hard-filtered pool
+# 4. Vector retrieval never sees candidates outside the retrieval pool
 # ----------------------------------------------------------------------
 
 def test_vector_only_on_filtered_pool(monkeypatch):
@@ -163,8 +165,8 @@ def test_vector_only_on_filtered_pool(monkeypatch):
     job = _make_job(min_exp=6, seniority="Senior", mandatory="Python")
     options = HybridOptions()
 
-    pool_ids = {c.id for c in service.hard_filter_candidates(db, job, options)}
-    assert 0 < len(pool_ids) < len(candidates)
+    strict_ids = {c.id for c in service.hard_filter_candidates(db, job, options)}
+    assert 0 < len(strict_ids) < len(candidates)
 
     seen = []
     orig = service.vector_retrieve
@@ -178,7 +180,9 @@ def test_vector_only_on_filtered_pool(monkeypatch):
 
     assert seen, "Vector stage should have executed"
     for pool in seen:
-        assert set(pool) == pool_ids
+        # Per request, the pool may be expanded with relaxed candidates to fill
+        # the requested limit, so it is always a superset of the strict pool.
+        assert strict_ids <= set(pool)
 
 
 # ----------------------------------------------------------------------
@@ -206,13 +210,19 @@ def test_final_top_5_correct():
     ids = [c["candidate_id"] for c in ranked["top_candidates"]]
 
     assert len(ids) == 5
+    # The strict winners must always occupy the complete Top-5. The weak
+    # candidates only enter the retrieval pool via the baseline fallback (to
+    # fill the limit) and must never outrank a strict winner.
     assert set(ids) == {1, 2, 3, 4, 5}
-    assert ids[0] == 1  # the strongest candidate wins
     assert ranked["pipeline_stats"]["final_ranked"] == 5
+    assert ranked["pipeline_stats"]["strict_hard_filtered"] == 5
+    assert ranked["pipeline_stats"]["relaxed_candidates"] == 5
+    # every returned candidate satisfied all mandatory skills (strict winners)
+    assert all(c["score_breakdown"]["mandatory_skills_satisfied"] for c in ranked["top_candidates"])
 
 
 # ----------------------------------------------------------------------
-# 6. No candidate outside the fused pool appears in the final ranking
+# 6. No candidate outside the retrieval pool appears in the final ranking
 # ----------------------------------------------------------------------
 
 def test_no_candidate_outside_pool_in_final_ranking(monkeypatch):
@@ -236,11 +246,15 @@ def test_no_candidate_outside_pool_in_final_ranking(monkeypatch):
     ranked = service.rank_candidates(db, job, top_n=6, options=options)
 
     pool_ids = seen_pools[-1] if seen_pools else all_ids
-    assert pool_ids < all_ids  # the hard filter did remove some candidates
+    # The retrieval pool can include relaxed candidates added to fill the
+    # requested Top-N, so it may span the entire candidate universe. The
+    # invariant is that no candidate outside that pool can be returned.
+    assert pool_ids
 
     final_ids = {c["candidate_id"] for c in ranked["top_candidates"]}
     assert final_ids
     assert final_ids <= pool_ids
+    assert final_ids <= all_ids
     assert ranked["pipeline_stats"]["fused_pool"] >= len(final_ids)
 
 

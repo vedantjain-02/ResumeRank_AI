@@ -828,6 +828,9 @@ class RankingService:
 
         stats = {
             "total_candidates_evaluated": total,
+            "selected_limit": top_n,
+            "strict_hard_filtered": 0,
+            "relaxed_candidates": 0,
             "hard_filtered": 0,
             "hard_filter_trimmed": 0,
             "bm25_retrieved": 0,
@@ -874,16 +877,25 @@ class RankingService:
         jd_embedding = embedding_service.generate_embedding(job.description) if job.description else None
         options.jd_embedding = jd_embedding
 
-        # ---- Stage 1: hard filtering (with graceful relaxation) ----
-        # A detailed JD can produce over-strict conditions (every required skill,
-        # tight max experience, etc.) that eliminate the entire pool. When that
-        # happens and `relax_on_empty` is enabled we cascade down:
-        #   strict -> no mandatory skills -> no seniority/education -> baseline
-        # recording which level succeeded so the UI can explain the result.
-        hard_pool = self.hard_filter_candidates(db, job, options, mandatory_skills=mandatory_skills)
+        # ---- Stage 1: hard filtering with graceful, limit-aware pool expansion ----
+        # The requested Top-N must be filled whenever enough candidates exist.
+        # The strict hard filter (mandatory skills + seniority + education +
+        # experience bounds) yields the highest-confidence candidates. When that
+        # pool is smaller than the requested limit we progressively relax the
+        # softest conditions and add candidates, keeping every strict candidate
+        # first and respecting these rules:
+        #   - maximum experience is NEVER relaxed: candidates over the JD's upper
+        #     bound only enter the pool if HARD_FILTER_MAX_EXPERIENCE is disabled;
+        #   - relaxed fallback candidates still keep the mandatory-priority gate
+        #     and the mandatory-skill score penalty;
+        #   - the retrieval pool gets enough headroom (>= requested limit, default
+        #     40) so BM25 / pgvector / fusion / detailed scoring can fill the
+        #     requested Top-N;
+        #   - the final limit is applied only after the full pipeline completes.
+        strict_pool = self.hard_filter_candidates(db, job, options, mandatory_skills=mandatory_skills)
         attempts = [{
             "level": "strict",
-            "pool_size": len(hard_pool),
+            "pool_size": len(strict_pool),
             "mandatory_skills": len(mandatory_skills),
         }]
         stats["hard_filter_conditions"] = _build_hard_filter_conditions(
@@ -891,62 +903,93 @@ class RankingService:
         )
         relaxation_reason = None
 
-        if len(hard_pool) == 0 and options.relax_on_empty and total > 0:
-            cascade_levels = [
-                ("relaxed_mandatory", {
-                    "enable_mandatory_skills": False,
-                    "enable_education": False,
-                }),
+        # Pre-ranking pool target: at least the requested limit, with headroom
+        # so the ranking can always be filled (capped by the hard-filter cap).
+        pool_target = min(total, max(top_n, options.min_pool_target), options.hard_filter_limit)
+        pool = list(strict_pool)
+        seen = {c.id for c in strict_pool}
+        pool_level: Dict[int, int] = {}
+        level_index = 1
+
+        if len(pool) < pool_target:
+            expansion_levels = [
+                # 1) drop only the mandatory-skill requirement (keep education,
+                #    seniority and every experience bound).
+                ("relaxed_mandatory", {"enable_mandatory_skills": False}),
+                # 2) also drop education (keep seniority and experience bounds).
+                ("relaxed_education", {"enable_mandatory_skills": False, "enable_education": False}),
+                # 3) also drop seniority (keep the experience bounds).
                 ("relaxed_all", {
                     "enable_mandatory_skills": False,
                     "enable_education": False,
                     "enable_seniority": False,
-                    "enable_max_experience": False,
                 }),
+                # 4) last resort: also drop minimum experience, but ALWAYS keep
+                #    the maximum-experience bound.
                 ("baseline", {
                     "enable_mandatory_skills": False,
                     "enable_education": False,
                     "enable_seniority": False,
-                    "enable_max_experience": False,
                     "enable_min_experience": False,
                 }),
             ]
-            for level, overrides in cascade_levels:
+            for level, overrides in expansion_levels:
+                if len(pool) >= pool_target:
+                    break
                 relaxed_options = replace(options, **overrides)
-                relaxation_reason = f"strict conditions produced an empty pool; fell back to {level}"
-                cand = self.hard_filter_candidates(
+                candidates_at_level = self.hard_filter_candidates(
                     db, job, relaxed_options, mandatory_skills=[],
                 )
-                attempts.append({"level": level, "pool_size": len(cand)})
-                if len(cand) > 0:
-                    options = relaxed_options
-                    mandatory_skills = []
-                    hard_pool = cand
-                    logger.warning(
-                        "Hard filter relaxed to '%s' for job %d (was empty under strict rules).",
-                        level, job.id,
+                additions = [c for c in candidates_at_level if c.id not in seen]
+                room = pool_target - len(pool)
+                additions = additions[:room]
+                for c in additions:
+                    pool_level[c.id] = level_index
+                pool.extend(additions)
+                seen.update(c.id for c in additions)
+                attempts.append({
+                    "level": level,
+                    "pool_size": len(candidates_at_level),
+                    "additions": len(additions),
+                })
+                if additions and relaxation_reason is None:
+                    relaxation_reason = (
+                        f"strict filter returned only {len(strict_pool)} candidate(s) "
+                        f"for a requested Top-{top_n}; the pool was expanded with "
+                        f"{level} candidates to fill the limit."
                     )
-                    break
+                logger.info(
+                    "Hard filter '%s': %d seen, +%d added (pool now %d/%d).",
+                    level, len(candidates_at_level), len(additions), len(pool), pool_target,
+                )
+                level_index += 1
 
+        hard_count = len(strict_pool)
+        expanded_count = sum(1 for c in pool if pool_level.get(c.id, 0) > 0)
+        stats["strict_hard_filtered"] = hard_count
+        stats["relaxed_candidates"] = expanded_count
+        stats["hard_filtered"] = hard_count
         stats["hard_filter_attempts"] = attempts
         stats["relaxation_reason"] = relaxation_reason
-        hard_count = len(hard_pool)
-        stats["hard_filtered"] = hard_count
-        logger.info("Stage 1 (hard filter): %d candidates passed the hard filters.", hard_count)
+        logger.info(
+            "Stage 1 (hard filter): %d strict + %d relaxed = %d candidates in retrieval pool.",
+            hard_count, expanded_count, len(pool),
+        )
 
-        # If the hard filter returns more than `hard_filter_limit`, keep the best
-        # `hard_filter_limit` using a preliminary relevance score (BM25 + vector).
-        if hard_count > options.hard_filter_limit:
-            prelim_bm25 = self.bm25_retrieve(hard_pool, job, options, limit=options.hard_filter_limit)
-            prelim_vec = self.vector_retrieve(db, hard_pool, jd_embedding, options, limit=options.hard_filter_limit)
+        # If the retrieval pool exceeds `hard_filter_limit` (e.g. a large strict
+        # pool), keep the best `hard_filter_limit` candidates using a preliminary
+        # relevance score so retrieval + detailed scoring stay bounded.
+        if len(pool) > options.hard_filter_limit:
+            prelim_bm25 = self.bm25_retrieve(pool, job, options, limit=options.hard_filter_limit)
+            prelim_vec = self.vector_retrieve(db, pool, jd_embedding, options, limit=options.hard_filter_limit)
             prelim_ids = set(self.fuse(prelim_bm25, prelim_vec, options, limit=options.hard_filter_limit))
-            hard_pool = [c for c in hard_pool if c.id in prelim_ids]
-            stats["hard_filter_trimmed"] = hard_count - len(hard_pool)
+            pre_trim = len(pool)
+            pool = [c for c in pool if c.id in prelim_ids]
+            stats["hard_filter_trimmed"] = pre_trim - len(pool)
             logger.info(
                 "Stage 1 (trim): pool reduced from %d to %d using preliminary relevance.",
-                hard_count, len(hard_pool),
+                pre_trim, len(pool),
             )
-        pool = hard_pool
 
         # ---- Stage 2: BM25 retrieval over the filtered pool ----
         bm25_scores = self.bm25_retrieve(pool, job, options)
@@ -984,8 +1027,10 @@ class RankingService:
             details["vector_score"] = round(vec_n * 100, 1)
             details["hybrid_score"] = round(hyb * 100, 1)
 
+            candidate_level = pool_level.get(cand.id, 0)
             breakdown = {
                 "hard_filter_result": "pass",
+                "pool_level": candidate_level,
                 "bm25_score": details["bm25_score"],
                 "vector_similarity_score": details["vector_score"],
                 "hybrid_retrieval_score": details["hybrid_score"],
@@ -1006,17 +1051,27 @@ class RankingService:
                 "explanation": explanation,
                 "breakdown": breakdown,
                 "mandatory_ok": mandatory_ok,
+                "pool_level": candidate_level,
             })
 
-        # Requirement: candidates satisfying all mandatory skills ALWAYS outrank
-        # candidates missing a mandatory skill (even with high semantic similarity).
+        # Requirements (kept strict-first):
+        #   1) candidates satisfying all mandatory skills ALWAYS outrank
+        #      candidates missing a mandatory skill (even with high semantic
+        #      similarity) - the mandatory gate plus penalty below;
+        #   2) strict hard-filtered candidates always come before relaxed
+        #      fallback candidates that were added to fill the requested Top-N;
+        #   3) within the same pool level the final score decides the order.
         scored.sort(
-            key=lambda x: (x["mandatory_ok"], x["scores"]["final_score"]),
-            reverse=True,
+            key=lambda x: (
+                x.get("pool_level", 0),
+                not x["mandatory_ok"],
+                -x["scores"]["final_score"],
+                x["candidate"].id,
+            ),
         )
         top = scored[:top_n]
         stats["final_ranked"] = len(top)
-        logger.info("Stage 5 (final): top %d candidates finalized.", len(top))
+        logger.info("Stage 5 (final): top %d candidates finalized from a pool of %d.", len(top), len(scored))
 
         # Collect the hybrid score settings for visibility in pipeline_stats.
         stats["final_hybrid_weight"] = options.final_hybrid_weight

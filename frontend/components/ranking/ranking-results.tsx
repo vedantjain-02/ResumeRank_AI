@@ -117,21 +117,25 @@ export function RankingResults() {
               description="The pipeline ran but produced zero final candidates. Review the debug statistics below."
             />
             {stats && (
-              <div className="grid gap-3 rounded-lg border bg-slate-50/60 p-4 text-sm sm:grid-cols-3">
+              <div className="grid gap-3 rounded-lg border bg-slate-50/60 p-4 text-sm sm:grid-cols-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Selected limit</p>
+                  <p className="text-lg font-bold text-slate-900">{stats.selected_limit ?? stats.final_ranked}</p>
+                </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Candidates evaluated</p>
                   <p className="text-lg font-bold text-slate-900">{stats.total_candidates_evaluated}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Passed hard filter</p>
-                  <p className="text-lg font-bold text-slate-900">{stats.hard_filtered}</p>
+                  <p className="text-xs text-muted-foreground">Strict filtered</p>
+                  <p className="text-lg font-bold text-slate-900">{stats.strict_hard_filtered ?? stats.hard_filtered}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Final ranked</p>
-                  <p className="text-lg font-bold text-slate-900">{stats.final_ranked}</p>
+                  <p className="text-xs text-muted-foreground">Relaxed fill-ins</p>
+                  <p className="text-lg font-bold text-slate-900">{stats.relaxed_candidates ?? 0}</p>
                 </div>
                 {relax && stats.relaxation_reason && (
-                  <div className="sm:col-span-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <div className="sm:col-span-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                     <span className="font-semibold">
                       Relaxation mode: <Badge className="ml-1" variant={RELAXATION_COLORS[relax.mode]}>{relax.label}</Badge>
                     </span>{" "}
@@ -139,7 +143,7 @@ export function RankingResults() {
                   </div>
                 )}
                 {!stats.relaxation_reason && stats.total_candidates_evaluated === 0 && (
-                  <p className="sm:col-span-3 text-xs text-muted-foreground">
+                  <p className="sm:col-span-4 text-xs text-muted-foreground">
                     The candidate database is empty — upload resumes in the Candidate Database section, then re-run.
                   </p>
                 )}

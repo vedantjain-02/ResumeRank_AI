@@ -90,6 +90,7 @@ export interface RankingRequest {
  */
 export interface ScoreBreakdown {
   hard_filter_result?: string;
+  pool_level?: number;
   bm25_score?: number | null;
   vector_similarity_score?: number | null;
   hybrid_retrieval_score?: number | null;
@@ -124,10 +125,14 @@ export interface HardFilterAttempt {
   level: string;
   pool_size: number;
   mandatory_skills?: number;
+  additions?: number;
 }
 
 export interface PipelineStats {
   total_candidates_evaluated: number;
+  selected_limit: number;
+  strict_hard_filtered: number;
+  relaxed_candidates: number;
   hard_filtered: number;
   hard_filter_trimmed: number;
   bm25_retrieved: number;

@@ -148,10 +148,10 @@ def test_pipeline_stats_conditions_reflect_mandatory_and_seniority():
 
 
 # ----------------------------------------------------------------------
-# 3. Curated / predefined jobs are NOT relaxed (matching pool stays strict)
+# 3. Predefined jobs: strict candidates first, relaxed fill to the limit
 # ----------------------------------------------------------------------
 
-def test_predefined_job_with_matching_mandatory_stays_strict():
+def test_predefined_job_keeps_strict_first_and_fills_to_limit():
     service = RankingService()
     candidates = [
         _make_candidate(1, "Fit", tags=["Python", "FastAPI", "PostgreSQL", "Docker", "SQL"]),
@@ -164,11 +164,23 @@ def test_predefined_job_with_matching_mandatory_stays_strict():
 
     ranked = service.rank_candidates(db, job, top_n=3)
 
-    assert ranked["pipeline_stats"]["hard_filter_attempts"][0]["level"] == "strict"
-    assert ranked["pipeline_stats"]["hard_filter_attempts"][0]["pool_size"] == 2
-    assert len(ranked["pipeline_stats"]["hard_filter_attempts"]) == 1
-    assert ranked["pipeline_stats"]["relaxation_reason"] is None
-    assert ranked["pipeline_stats"]["hard_filtered"] == 2
+    stats = ranked["pipeline_stats"]
+    assert stats["hard_filter_attempts"][0]["level"] == "strict"
+    assert stats["hard_filter_attempts"][0]["pool_size"] == 2
+    assert stats["strict_hard_filtered"] == 2
+    assert stats["hard_filtered"] == 2
+    # The strict pool (2) is smaller than the requested Top-3, so the relaxed
+    # mandatory level fills the final count without dropping any strict winner.
+    assert stats["relaxed_candidates"] == 1
+    assert stats["relaxation_reason"] is not None
+    assert len(stats["hard_filter_attempts"]) > 1
+
+    ids = [c["candidate_id"] for c in ranked["top_candidates"]]
+    assert len(ids) == 3
+    assert set(ids) == {1, 2, 3}
+    # strict candidates occupy the first two slots
+    assert set(ids[:2]) == {1, 2}
+    assert ids[2] == 3
 
 
 # ----------------------------------------------------------------------

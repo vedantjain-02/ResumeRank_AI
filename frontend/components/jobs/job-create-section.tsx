@@ -7,6 +7,7 @@ import {
   RotateCcw,
   Loader2,
   CheckCircle2,
+  ChevronDown,
   Briefcase,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -75,6 +76,7 @@ function buildDescription(form: FormState): string {
 
 export function JobCreateSection() {
   const { refreshJobs, setSelectedJobId, scrollToSection } = useApp();
+  const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState<FormState>(EMPTY);
   const [mode, setMode] = React.useState<"text" | "file">("text");
   const [file, setFile] = React.useState<File | null>(null);
@@ -149,8 +151,30 @@ export function JobCreateSection() {
             Add a position and build a structured job description for AI matching
           </p>
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+            {open ? "Collapse" : "Expand"}
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+          </Button>
+        </div>
       </div>
 
+      {!open && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-slate-50/60 px-5 py-4">
+          <p className="text-sm text-muted-foreground">
+            The job creation form is collapsed.{" "}
+            <strong className="text-slate-700">Expand</strong> to add a position and build a structured
+            job description for AI matching.
+          </p>
+          <div className="flex gap-2">
+            <Badge variant="secondary">Structured JD builder</Badge>
+            <Badge variant="secondary">Text or file upload</Badge>
+          </div>
+        </div>
+      )}
+
+      {open && (
+      <div className="space-y-4 animate-fade-in">
       <Card>
         <CardContent className="p-5 sm:p-6">
           <form onSubmit={onSubmit} className="space-y-5" noValidate>
@@ -337,9 +361,11 @@ export function JobCreateSection() {
           </form>
         </CardContent>
       </Card>
-      <div className="mt-3 flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Badge variant="secondary">Parsed sections: required skills · preferred skills · experience · education</Badge>
       </div>
+      </div>
+      )}
     </section>
   );
 }

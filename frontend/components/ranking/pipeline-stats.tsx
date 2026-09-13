@@ -15,6 +15,8 @@ import {
   Lightbulb,
   Info,
   SlidersHorizontal,
+  Target,
+  UserPlus,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -127,16 +129,28 @@ export function PipelineStatsPanel() {
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <StatTile
+            label="Selected limit"
+            value={formatNumber(stats.selected_limit ?? stats.final_ranked)}
+            icon={Target}
+            hint="The Top-N requested for this ranking run."
+          />
+          <StatTile
             label="Total evaluated"
             value={formatNumber(stats.total_candidates_evaluated)}
             icon={Users}
             hint="Every candidate in the database that entered the pipeline."
           />
           <StatTile
-            label="Hard filtered"
-            value={formatNumber(stats.hard_filtered)}
+            label="Strict filtered"
+            value={formatNumber(stats.strict_hard_filtered ?? stats.hard_filtered)}
             icon={Filter}
-            hint="Candidates that passed the strict (or relaxed) hard filter before retrieval."
+            hint="Candidates that passed every strict hard filter (mandatory skills, seniority, education, experience bounds)."
+          />
+          <StatTile
+            label="Relaxed fill-ins"
+            value={formatNumber(stats.relaxed_candidates ?? 0)}
+            icon={UserPlus}
+            hint="Candidates added from progressively relaxed filters so the requested limit can be filled."
           />
           <StatTile
             label="BM25 retrieved"
@@ -170,7 +184,7 @@ export function PipelineStatsPanel() {
                 : "Unlimited"
             }
             icon={CalendarRange}
-            hint="Upper experience bound parsed from the JD and applied as a hard filter."
+            hint="Upper experience bound parsed from the JD and applied as a hard filter (never relaxed)."
           />
           <StatTile
             label="Hard filter cap"
@@ -230,6 +244,9 @@ export function PipelineStatsPanel() {
                       {a.level}
                     </span>
                     <span className="font-medium text-slate-700">pool: {a.pool_size}</span>
+                    {a.additions != null && (
+                      <span className="text-muted-foreground">· +{a.additions} added</span>
+                    )}
                     {a.mandatory_skills != null && (
                       <span className="text-muted-foreground">· mandatory: {a.mandatory_skills}</span>
                     )}
